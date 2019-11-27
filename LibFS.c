@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
 #include "LibDisk.h"
 #include "LibFS.h"
 
@@ -385,7 +386,86 @@ int create_file_or_directory(int type, char* pathname)
 int remove_inode(int type, int parent_inode, int child_inode)
 {
   /* YOUR CODE */
-  return -1;
+  //get child i_node
+    inode_t* childnode = getInodeHelper(child_inode);
+  
+  //
+  int sector = INODE_TABLE_START_SECTOR + child_inode / INODES_PER_SECTOR;
+  char inode_buffer[SECTOR_SIZE];
+    //check type validity
+    if (childnode->type != type) 
+    {
+      dprintf("...filetype not valid\n");
+      return -3;
+    } 
+
+    // check for empty directory
+    else if (childnode->size!=0)
+     { 
+       dprint("...directory not empty");
+       return -2; 
+     }
+
+    //remove data from child inode
+    for(int i=0;i < MAX_SECTORS_PER_FILE;i++) //MAX_SECTORS_PER_FILE=30
+    if (childnode->data[i])
+    { 
+      //buffer size is 512 bytes
+      char buffer[SECTOR_SIZE];
+      dprintf("...deleting data of child node\n");
+      bitmap_reset(SECTOR_BITMAP_START_SECTOR, SECTOR_BITMAP_SECTORS, childnode->data[i]); //it resets the bit at the specific file table position
+      //setting the value of buffer of size 512 bytes to zero
+      for(int j=0;j<=SECTOR_SIZE;j++)
+      {
+        buffer[j]=0;
+      }
+    }
+    //remove child inode
+    bitmap_reset(INODE_BITMAP_START_SECTOR,INODE_BITMAP_SECTORS, child_inode);
+    memset(childnode,0,sizeof(inode_t));
+    dprint("child inode is removed from i node table");
+
+    //update sector to disk
+    childnode->type = type;
+    if(Disk_Write(sector,inode_buffer) < 0) return -1;
+    dprintf("... update child inode %d (size=%d, type=%d), update disk sector %d\n",
+    child_inode, childnode->size, childnode->type, sector);
+
+    // get the disk sector containing the parent inode
+    sector = INODE_TABLE_START_SECTOR+parent_inode/INODES_PER_SECTOR;
+    if(Disk_Read(sector, inode_buffer) < 0) return -1;
+    dprintf("... load inode table for parent inode %d from disk sector %d\n",
+	  parent_inode, sector);
+
+    // get the parent inode
+    int inode_start_entry = (sector-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
+    int offset = parent_inode-inode_start_entry;
+    assert(0 <= offset && offset < INODES_PER_SECTOR);
+    inode_t* parent = (inode_t*)(inode_buffer+offset*sizeof(inode_t));
+    dprintf("... get parent inode %d (size=%d, type=%d)\n",
+    parent_inode, parent->size, parent->type);
+
+    // remove child from parent
+    
+    for (int k;k<MAX_SECTORS_PER_FILE;k++ ) // MAX_SECTORS_PER_FILE=30
+    {
+    char dir[SECTOR_SIZE]; 
+    int parent_data=parent->data[k];
+    for (int l=0;k<DIRENTS_PER_SECTOR;l++ ) // DIRENTS_PER_SECTOR = 25
+    {
+     dirent_t *begin = (dirent_t *) (dir + (l * sizeof(dirent_t)));//size of dirent_t is 
+    if (begin->inode==child_inode)
+      {
+        
+        memset(begin, 0, sizeof(dirent_t));
+        Disk_Write(parent_data, dir);
+        return 0;
+        dprintf("Child inode removed from parent successfully");
+      }
+    
+    }
+    }
+    return -1;
 }
 
 // representing an open file
@@ -468,8 +548,8 @@ int FS_Boot(char* backstore_fname)
       
       // format inode tables
       for(int i=0; i<INODE_TABLE_SECTORS; i++) {
-	memset(buf, 0, SECTOR_SIZE);
-	if(i==0) {
+	    memset(buf, 0, SECTOR_SIZE);
+	    if(i==0) {
 	  // the first inode table entry is the root directory
 	  ((inode_t*)buf)->size = 0;
 	  ((inode_t*)buf)->type = 1;
@@ -560,6 +640,44 @@ int File_Create(char* file)
 int File_Unlink(char* file)
 {
   /* YOUR CODE */
+  int type;
+  char pathname;
+  int child_inode;
+  char last_fname[MAX_NAME]; // file namee size is 30 byte
+  int parent_inode=follow_path(pathname,&child_inode,last_fname);
+  if (parent_inode>=0){
+    if(child_inode>=0){
+      if(remove_inode(type,parent_inode,child_inode)==0)
+      {
+        dprintf("Successful Removal of file \n ",pathname);
+        return 0;
+      }
+      else if (remove_inode(type, parent_inode,child_inode)==-2)
+      {
+        dprintf("...directory not empty");
+        return -2;
+      }
+      else if (remove_inode(type,parent_inode,child_inode)==-2)
+      {
+        dprintf("...type is wrong");
+        return -3;
+      }
+    }
+    if(child_inode < 1){ 
+        dprintf("...File does not exist");
+        osErrno = E_NO_SUCH_FILE;
+        return -1;
+    }
+    if (is_file_open(child_inode)==0)
+    {
+        dprintf("...File is already open");
+        osErrno = E_FILE_IN_USE;
+        return -1;       
+
+    }
+  
+  }
+  
   return -1;
 }
 
