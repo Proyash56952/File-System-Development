@@ -642,7 +642,7 @@ int File_Unlink(char* file)
 {
   /* YOUR CODE */
   int type;
-  char pathname;
+  char* pathname;
   int child_inode;
   char last_fname[MAX_NAME]; // file namee size is 30 byte
   int parent_inode=follow_path(pathname,&child_inode,last_fname);
