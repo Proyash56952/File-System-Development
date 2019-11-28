@@ -450,7 +450,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
     for (int k = 0; k < MAX_SECTORS_PER_FILE; k++) {
         if (parent->data[k]) {
             if (Disk_Read(parent->data[k], dirent_buffer) < 0) { return -1; }
-            dprintf("... load disk sector %d for dirent group %d\n", parent->data[j], j + 1);
+            dprintf("... load disk sector %d for dirent group %d\n", parent->data[k], j + 1);
 
             for (int l = 0; l < DIRENTS_PER_SECTOR; l++) {
                 dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t)));
