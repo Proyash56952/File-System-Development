@@ -3,12 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 #include "LibDisk.h"
 #include "LibFS.h"
-
+#include <ctype.h>
 // set to 1 to have detailed debug print-outs and 0 to have none
-#define FSDEBUG 0
+#define FSDEBUG 1
 
 #if FSDEBUG
 #define dprintf printf
@@ -84,6 +83,7 @@ typedef struct _inode {
 // max number of open files is 256
 #define MAX_OPEN_FILES 256
 
+inode_t* getInodeHelper(int child_inode);
 // each directory entry represents a file/directory in the parent
 // directory, and consists of a file/directory name (less than 16
 // bytes) and an integer inode number
@@ -119,6 +119,39 @@ static int check_magic()
 static void bitmap_init(int start, int num, int nbits)
 {
   /* YOUR CODE */
+  dprintf("Initializing Bitmap\n");
+  dprintf("The inode size is %d\n",sizeof(inode_t));
+  dprintf("data block start %d\n", DATABLOCK_START_SECTOR);
+  //dprintf("hello\n");
+  int beginSector,beginByte,beginBit,bitToOne;
+  //dprintf("%d",1);
+  for(beginSector = 0; beginSector < num ; beginSector++){
+    char *bitmap = calloc(512,sizeof(char));
+    //memset(bitmap,1,nbits);
+    //char bitmap[512];
+    //memset(bitmap,1,nbits);
+    //bitmap[3] = 1;
+    for(beginByte = 0; beginByte < 512; beginByte++){
+      bitToOne = nbits;
+      for(beginBit = 7; beginBit >= 0; beginBit--){
+        if (nbits > 0){	// only set first nbits as 1
+	  bitmap[beginByte] |= (1 << beginBit);
+	  nbits--;
+	  //memset(bitmap,1,nbits);
+	}
+      }
+    }
+    //dprintf("%c",bitmap[3]);
+    for(int i =0; i< 512; i++)
+      dprintf("%x ",bitmap[i]);
+    dprintf("\n");
+    Disk_Write(start+beginSector, bitmap);
+    //Disk_Save(bitmap);
+    free(bitmap);
+    //dprintf(sizeof(inode_t));
+    //dprintf("hello\n");
+  }
+  //static int child_inode = bitmap_first_unused(1, 5, 10);
 }
 
 // set the first unused bit from a bitmap of 'nbits' bits (flip the
@@ -127,6 +160,34 @@ static void bitmap_init(int start, int num, int nbits)
 static int bitmap_first_unused(int start, int num, int nbits)
 {
   /* YOUR CODE */
+  dprintf("bitmap first unused\n");
+  int beginSector,beginByte,beginBit;
+  int temp,result;
+  int position = 0;
+  char *bitmap = calloc(512,sizeof(char));
+  for(beginSector = 0; beginSector < num; beginSector++){
+    if(Disk_Read(start+beginSector, bitmap) == 0){
+      for(beginByte = 0; beginByte < 512 ; beginByte++){
+          result = bitmap[beginByte];
+	  if(result == -1){
+	    dprintf("debug %d\n", result);
+	    position +=8;
+	  }
+	  else{	
+	for(beginBit = 7; beginBit >= 0; beginBit--){
+	  temp = bitmap[beginByte] >> beginBit;
+	  temp &= 1;
+	  if(temp == 0){
+	    bitmap[beginByte] |= (1 << beginBit);
+	    Disk_Write(start+beginSector, bitmap);
+	    return position;
+	  }
+	  position++;  
+	}
+	  }
+      }
+    }
+  }
   return -1;
 }
 
@@ -135,6 +196,25 @@ static int bitmap_first_unused(int start, int num, int nbits)
 static int bitmap_reset(int start, int num, int ibit)
 {
   /* YOUR CODE */
+  dprintf("Bitmap reset function has been called");
+  int beginSector, beginByte, beginBit;
+  int Sector,byte,bit;
+  char *bitmap = calloc(512,sizeof(char));
+  Sector = ibit / (512*8);
+  bit = ibit % (512*8);
+  //ibit = ibit - (Sector*512*8) - (byte*8);
+  dprintf("the sector and byte is %d and %d\n",Sector,byte);
+  Disk_Read(start+Sector, bitmap);
+  for(int beginByte = 0; beginByte < 512; beginSector++){
+    for(int beginBit = 7; beginBit >=0; beginBit --){
+      if(bit == 0){
+        bitmap[beginByte] &= ~(1 << beginBit);
+	Disk_Write(start+Sector, bitmap);
+	return 0;
+      }
+      bit --;
+    }
+  }
   return -1;
 }
 
@@ -145,7 +225,21 @@ static int bitmap_reset(int start, int num, int ibit)
 static int illegal_filename(char* name)
 {
   /* YOUR CODE */
-  return 1; 
+  size_t len = strlen(name);
+  dprintf("Size is %d\n",len); 
+  dprintf("value is %s\n",name);
+  if(len > MAX_NAME - 1){
+    dprintf("Name is too big\n");
+    return 1;
+  }
+  for(int i = 0; i<len;i++){
+    if(!(isdigit(name[i]) || isalpha(name[i]) || name[i] == '.' || name[i] == '-' || name[i] == '_')){
+      dprintf("name contains illegal charecter\n");
+      return 1;
+    }
+  }
+  
+  return 0; 
 }
 
 // return the child inode of the given file name 'fname' from the
@@ -358,6 +452,7 @@ int create_file_or_directory(int type, char* pathname)
   int child_inode;
   char last_fname[MAX_NAME];
   int parent_inode = follow_path(pathname, &child_inode, last_fname);
+  dprintf("the paren_inode is %d\n",parent_inode);
   if(parent_inode >= 0) {
     if(child_inode >= 0) {
       dprintf("... file/directory '%s' already exists, failed to create\n", pathname);
@@ -435,7 +530,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
     sector = INODE_TABLE_START_SECTOR+parent_inode/INODES_PER_SECTOR;
     if(Disk_Read(sector, inode_buffer) < 0) return -1;
     dprintf("... load inode table for parent inode %d from disk sector %d\n",
-	  parent_inode, sector);
+    parent_inode, sector);
 
     // get the parent inode
     int inode_start_entry = (sector-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
@@ -465,8 +560,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
 
     }
     }
-  
-    return -1;
+  return -1;
 }
 
 // representing an open file
@@ -549,8 +643,8 @@ int FS_Boot(char* backstore_fname)
       
       // format inode tables
       for(int i=0; i<INODE_TABLE_SECTORS; i++) {
-	    memset(buf, 0, SECTOR_SIZE);
-	    if(i==0) {
+	memset(buf, 0, SECTOR_SIZE);
+	if(i==0) {
 	  // the first inode table entry is the root directory
 	  ((inode_t*)buf)->size = 0;
 	  ((inode_t*)buf)->type = 1;
@@ -641,7 +735,7 @@ int File_Create(char* file)
 int File_Unlink(char* file)
 {
   /* YOUR CODE */
-  int type;
+   int type;
   char* pathname;
   int child_inode;
   char last_fname[MAX_NAME]; // file namee size is 30 byte
@@ -678,7 +772,7 @@ int File_Unlink(char* file)
     }
   
   }
-  
+
   return -1;
 }
 
@@ -742,6 +836,18 @@ int File_Write(int fd, void* buffer, int size)
 int File_Seek(int fd, int offset)
 {
   /* YOUR CODE */
+  dprintf("File_Seek (%d):\n",fd);
+  if(offset < 0 || open_files[fd].size < offset){
+    osErrno = E_SEEK_OUT_OF_BOUNDS;
+    return -1;
+  }
+  
+  if(open_files[fd].inode = 0){
+    osErrno = E_BAD_FD;
+    return -1;
+  }
+
+  open_files[fd].pos = offset;
   return 0;
 }
 
@@ -779,12 +885,51 @@ int Dir_Unlink(char* path)
 int Dir_Size(char* path)
 {
   /* YOUR CODE */
+  int child_inode;
+  follow_path(path, &child_inode, NULL);
+  if(child_inode >= 0) { // child is the one
+    inode_t* directory = getInodeHelper(child_inode);
+    return directory->size * sizeof(dirent_t);
+  }
   return 0;
 }
 
 int Dir_Read(char* path, void* buffer, int size)
 {
   /* YOUR CODE */
+  int child_inode;
+  follow_path(path,&child_inode,NULL);
+
+  inode_t* directory = getInodeHelper(child_inode);
+  if(Dir_Size > size){
+    osErrno = E_BUFFER_TOO_SMALL;
+    return -1;
+  }
+  
+  char *buf =calloc(512,sizeof(char));
+  for(int i=0;i<MAX_SECTORS_PER_FILE;i++){
+    Disk_Read(dir->data[i],buf);
+  }
   return -1;
 }
 
+inode_t *getInodeHelper(int child_inode){
+//int child_inode;
+  //follow_path(file, &child_inode, NULL);
+  //if(child_inode >= 0) { // child is the one
+    // load the disk sector containing the inode
+    int inode_sector = INODE_TABLE_START_SECTOR+child_inode/INODES_PER_SECTOR;
+    char inode_buffer[SECTOR_SIZE];
+    if(Disk_Read(inode_sector, inode_buffer) < 0) { osErrno = E_GENERAL; return -1; }
+    dprintf("... load inode table for inode from disk sector %d\n", inode_sector);
+
+    // get the inode
+    int inode_start_entry = (inode_sector-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
+    int offset = child_inode-inode_start_entry;
+    assert(0 <= offset && offset < INODES_PER_SECTOR);
+    inode_t* child = (inode_t*)(inode_buffer+offset*sizeof(inode_t));
+    dprintf("... inode %d (size=%d, type=%d)\n",
+	    child_inode, child->size, child->type);
+    return child;
+ // }
+}
