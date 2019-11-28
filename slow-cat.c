@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     printf("ERROR: can't open file '%s'\n", path);
     return -2;
   }
-
+  int pro = 1;
   char buf[BFSZ+1]; int sz;
   do {
     sz = File_Read(fd, buf, BFSZ);
@@ -38,6 +38,8 @@ int main(int argc, char *argv[])
     }
     buf[sz] = '\0';
     printf("%s", buf);
+    printf("the size is %d\n",sz);
+	pro++;
   } while(sz > 0);
   
   File_Close(fd);

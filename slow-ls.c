@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   int sz = Dir_Size(path);
+  printf("the directory size is %d\n",sz);
   if(sz < 0) {
     printf("ERROR: can't list '%s'\n", path);
     return -2;
