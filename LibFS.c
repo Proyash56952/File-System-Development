@@ -423,7 +423,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
     //remove child inode
     bitmap_reset(INODE_BITMAP_START_SECTOR,INODE_BITMAP_SECTORS, child_inode);
     memset(childnode,0,sizeof(inode_t));
-    dprint("child inode is removed from i node table");
+    dprintf("child inode is removed from i node table");
 
     //update sector to disk
     childnode->type = type;
