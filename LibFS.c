@@ -446,14 +446,6 @@ int remove_inode(int type, int parent_inode, int child_inode)
     parent_inode, parent->size, parent->type);
 
     // remove child from parent
-    int inode_start_entry = (sector-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
-    int offset = parent_inode-inode_start_entry;
-    assert(0 <= offset && offset < INODES_PER_SECTOR);
-    inode_t* parent = (inode_t*)(inode_buffer+offset*sizeof(inode_t));
-    dprintf("... get parent inode %d (size=%d, type=%d)\n",
-    parent_inode, parent->size, parent->type);
-
-    // remove child from parent
 
     for (int k;k<MAX_SECTORS_PER_FILE;k++ ) // MAX_SECTORS_PER_FILE=30
     {
