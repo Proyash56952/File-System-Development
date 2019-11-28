@@ -120,8 +120,8 @@ static void bitmap_init(int start, int num, int nbits)
 {
   /* YOUR CODE */
   dprintf("Initializing Bitmap\n");
-  dprintf("The inode size is %d\n",sizeof(inode_t));
-  dprintf("data block start %d\n", DATABLOCK_START_SECTOR);
+  dprintf("The inode size is %ld\n",sizeof(inode_t));
+  dprintf("data block start %ld\n", DATABLOCK_START_SECTOR);
   //dprintf("hello\n");
   int beginSector,beginByte,beginBit,bitToOne;
   //dprintf("%d",1);
@@ -529,8 +529,8 @@ int remove_inode(int type, int parent_inode, int child_inode)
     // get the disk sector containing the parent inode
     sector = INODE_TABLE_START_SECTOR+parent_inode/INODES_PER_SECTOR;
     if(Disk_Read(sector, inode_buffer) < 0) return -1;
-    dprintf("... load inode table for parent inode %d from disk sector %d\n",
-    parent_inode, sector);
+    dprintf("... load inode table for parent inode %d from disk sector %d\n"
+    ,parent_inode, sector);
 
     // get the parent inode
     int inode_start_entry = (sector-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
@@ -897,7 +897,7 @@ int Dir_Size(char* path)
 int Dir_Read(char* path, void* buffer, int size)
 {
   /* YOUR CODE */
-  int child_inode;
+  /*int child_inode;
   follow_path(path,&child_inode,NULL);
 
   inode_t* directory = getInodeHelper(child_inode);
@@ -909,7 +909,7 @@ int Dir_Read(char* path, void* buffer, int size)
   char *buf =calloc(512,sizeof(char));
   for(int i=0;i<MAX_SECTORS_PER_FILE;i++){
     Disk_Read(dir->data[i],buf);
-  }
+  }*/
   return -1;
 }
 
