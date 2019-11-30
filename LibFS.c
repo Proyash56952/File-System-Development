@@ -121,70 +121,44 @@ static void bitmap_init(int start, int num, int nbits)
 {
   /* YOUR CODE */
   dprintf("Initializing Bitmap\n");
-  dprintf("The inode size is %d\n",sizeof(inode_t));
-  dprintf("data block start %d\n", DATABLOCK_START_SECTOR);
-  //dprintf("hello\n");
+  
   int beginSector,beginByte,beginBit,bitToOne;
-  //dprintf("%d",1);
-  //char *buf = calloc(512*8*num,sizeof(char));
-  //memset(buf,1,nbits);
+  
+  for(beginSector = 0; beginSector < num ; beginSector++){ // here we will iterate through each sector once becasue we can use the Disk_Write operation sector wise.
+    char *bitmap = calloc(512,sizeof(char)); // using calloc, we assign a particular sector and make all the values 0 at the same time
+    int temp,mod; // These 2 variables are used to optimize the assigning of 1 to first nbits value
     
-  
-  
-  for(beginSector = 0; beginSector < num ; beginSector++){
-    char *bitmap = calloc(512,sizeof(char));
-    int temp,mod;
-    //char *buf = calloc(512*8,sizeof(char));
-    if(nbits < 512*8 && nbits > 0){
+    if (nbits > 512*8){ // this if blocks indicate that the value of nbits is larger than the total size of a sector,so we can make the all sector set without using any sequential process.
+      memset(bitmap,255,512); // set all the bytes of this sector to 255 which means all the bits are 1 of this particular sector.
+      nbits = nbits - 512; // reducing the value of nbits to 512 as we have already set the 512 bytes
+    }
+
+    else if(nbits < 512*8 && nbits > 0){ // in this situation, the value of nbits is less than a sector contains
       //memset(buf,1,nbits);
       //nbits = 0;
-      temp = nbits/8;
-      mod = nbits%8;
-      memset(bitmap,255,temp);
-      for(beginBit = 7; beginBit >=0;beginBit--){
+      temp = nbits/8; // returns how many bytes we can be completely set using the 255.
+      mod = nbits%8; // returns how many bits are left over
+      memset(bitmap,255,temp); // set all the bytes we can set to 255
+      for(beginBit = 0; beginBit < 8;beginBit++){ // seqentially modified the last byte with the leftover bits. Took some help from https://www.cprogramming.com/tutorial/bitwise_operators.html website whileimplementing this part.
         if(mod > 0){
-	  bitmap[temp] = (1 << beginBit);
+	  bitmap[temp] = (1 << (7-beginBit));
 	  mod--;
 	}
       }
-      nbits=0;
-    }
-    else if (nbits > 512*8){
-      //memset(buf,1,512*8);
-      nbits = nbits - 512;
-      memset(bitmap,255,512);
+      nbits=0; // all nbits are set, so making the value to 0
     }
     else{
-      //do nothing
+      //do nothing. just write a all 0 array to the disk
     }
 
-
-
-    //memset(bitmap,1,nbits);
-    //char bitmap[512];
-    //memset(bitmap,1,nbits);
-    //bitmap[3] = 1;
-   /* for(beginByte = 0; beginByte < 512; beginByte++){
-      bitToOne = nbits;
-      for(beginBit = 7; beginBit >= 0; beginBit--){
-        if (nbits > 0){	// only set first nbits as 1
-	  bitmap[beginByte] |= (1 << beginBit);
-	  nbits--;
-	  //memset(bitmap,1,nbits);
-	}
-      }
-    }*/
-    //dprintf("%c",bitmap[3]);
-    for(int i =0; i< 512; i++)
+    //print the bitmap
+    /*for(int i =0; i< 512; i++)
       dprintf("%x ",bitmap[i]);
-    dprintf("\n");
+    dprintf("\n");*/
     Disk_Write(start+beginSector, bitmap);
-    //Disk_Save(bitmap);
-    free(bitmap);
-    //dprintf(sizeof(inode_t));
-    //dprintf("hello\n");
+   
+    free(bitmap); // free the bitmap after use
   }
-  //static int child_inode = bitmap_first_unused(1, 5, 10);
 }
 
 // set the first unused bit from a bitmap of 'nbits' bits (flip the
@@ -193,33 +167,38 @@ static void bitmap_init(int start, int num, int nbits)
 static int bitmap_first_unused(int start, int num, int nbits)
 {
   /* YOUR CODE */
-  dprintf("bitmap first unused\n");
+  dprintf("bitmap first unused using nbits value of %d\n",nbits);
   int beginSector,beginByte,beginBit;
-  int temp,result;
-  int position = 0;
+  int result;
+  int position = 0;// this variable will be used to return the first unused position
   char *bitmap = calloc(512,sizeof(char));
-  for(beginSector = 0; beginSector < num; beginSector++){
+  beginSector = 0; // we will iterate each sector using this variable
+  
+  while(nbits > 0){// we will iterate as long we have a positivie nbits value
     if(Disk_Read(start+beginSector, bitmap) == 0){
-      for(beginByte = 0; beginByte < 512 ; beginByte++){
+      for(beginByte = 0; beginByte < 512 ; beginByte++){// we will iterate each byte
           result = bitmap[beginByte];
-	  if(result == -1){
-	    dprintf("debug %d\n", result);
-	    position +=8;
+	  if(result == -1){ // this means all the bits are 1 in this particular byte, so no need to iterate through the bits
+	    position +=8; // increase the position as 8
+	    nbits -= 8;// decrease the nbits value to 8
 	  }
-	  else{	
-	for(beginBit = 7; beginBit >= 0; beginBit--){
-	  temp = bitmap[beginByte] >> beginBit;
-	  temp &= 1;
-	  if(temp == 0){
-	    bitmap[beginByte] |= (1 << beginBit);
-	    Disk_Write(start+beginSector, bitmap);
-	    return position;
-	  }
-	  position++;  
-	}
-	  }
+	  else{	// here all the bits of this byte is not 1, so we will find our desired unused bit now
+            for(beginBit = 0; beginBit < 8; beginBit++){ // iterate through the 8 bits of that byte
+            //temp = bitmap[beginByte] >> beginBit;
+	    //temp &= 1;
+	    //temp = (bitmap[beginByte] & (1 << beginBit));
+	    if((bitmap[beginByte] & (1 << (7-beginBit))) == 0){ // this particular bit is 0 (our desired one). Took help to check a particular bit from a byte from this website: https://stackoverflow.com/questions/4854207/get-a-specific-bit-from-byte
+	      bitmap[beginByte] = bitmap[beginByte] | (1 << (7-beginBit)); // update the specific byte
+	      Disk_Write(start+beginSector, bitmap); // update the disk with modified byte
+	      return position;
+	    }
+            position++;
+	    nbits --;  
+	    }
+         }
       }
     }
+    beginSector++;
   }
   return -1;
 }
@@ -517,8 +496,89 @@ int create_file_or_directory(int type, char* pathname)
   return -1;
 }*/
 
-int remove_inode(int type, int parent_inode, int child_inode) {
-   return -1;
+int remove_inode(int type, int parent_inode, int child_inode)
+{
+  /* YOUR CODE */
+  //get child i_node
+    inode_t* childnode = getInodeHelper(child_inode);
+  
+  //
+  int sector = INODE_TABLE_START_SECTOR + child_inode / INODES_PER_SECTOR;
+  char inode_buffer[SECTOR_SIZE];
+    //check type validity
+    if (childnode->type != type) 
+    {
+      dprintf("...filetype not valid\n");
+      return -3;
+    } 
+
+    // check for empty directory
+    else if (childnode->size!=0)
+     { 
+       dprintf("...directory not empty");
+       return -2; 
+     }
+
+    //remove data from child inode
+    for(int i=0;i < MAX_SECTORS_PER_FILE;i++) //MAX_SECTORS_PER_FILE=30
+    if (childnode->data[i])
+    { 
+      //buffer size is 512 bytes
+      char buffer[SECTOR_SIZE];
+      dprintf("...deleting data of child node\n");
+      bitmap_reset(SECTOR_BITMAP_START_SECTOR, SECTOR_BITMAP_SECTORS, childnode->data[i]); //it resets the bit at the specific file table position
+      //setting the value of buffer of size 512 bytes to zero
+      for(int j=0;j<=SECTOR_SIZE;j++)
+      {
+        buffer[j]=0;
+      }
+    }
+    //remove child inode
+    bitmap_reset(INODE_BITMAP_START_SECTOR,INODE_BITMAP_SECTORS, child_inode);
+    memset(childnode,0,sizeof(inode_t));
+    dprintf("child inode is removed from i node table");
+
+    //update sector to disk
+    childnode->type = type;
+    if(Disk_Write(sector,inode_buffer) < 0) return -1;
+    dprintf("... update child inode %d (size=%d, type=%d), update disk sector %d\n",
+    child_inode, childnode->size, childnode->type, sector);
+
+    // get the disk sector containing the parent inode
+    sector = INODE_TABLE_START_SECTOR+parent_inode/INODES_PER_SECTOR;
+    if(Disk_Read(sector, inode_buffer) < 0) return -1;
+    dprintf("... load inode table for parent inode %d from disk sector %d\n"
+    ,parent_inode, sector);
+
+    // get the parent inode
+    int inode_start_entry = (sector-INODE_TABLE_START_SECTOR)*INODES_PER_SECTOR;
+    int offset = parent_inode-inode_start_entry;
+    assert(0 <= offset && offset < INODES_PER_SECTOR);
+    inode_t* parent = (inode_t*)(inode_buffer+offset*sizeof(inode_t));
+    dprintf("... get parent inode %d (size=%d, type=%d)\n",
+    parent_inode, parent->size, parent->type);
+
+    // remove child from parent
+
+    for (int k;k<MAX_SECTORS_PER_FILE;k++ ) // MAX_SECTORS_PER_FILE=30
+    {
+    char dir[SECTOR_SIZE]; 
+    int parent_data=parent->data[k];
+    for (int l=0;k<DIRENTS_PER_SECTOR;l++ ) // DIRENTS_PER_SECTOR = 25
+    {
+     dirent_t *begin = (dirent_t *) (dir + (l * sizeof(dirent_t)));//size of dirent_t is 
+    if (begin->inode==child_inode)
+      {
+
+        memset(begin, 0, sizeof(dirent_t));
+        Disk_Write(parent_data, dir);
+        return 0;
+        dprintf("Child inode removed from parent successfully");
+      }
+
+    }
+    }
+  return -1;
 }
 // representing an open file
 typedef struct _open_file {
@@ -691,9 +751,52 @@ int File_Create(char* file)
 
 int File_Unlink(char* file)
 {
-  /* YOUR CODE */
+  
   return -1;
 }
+
+/*int File_Unlink(char* file)
+{
+   int type;
+  char* pathname;
+  int child_inode;
+  char last_fname[MAX_NAME]; // file namee size is 30 byte
+  int parent_inode=follow_path(pathname,&child_inode,last_fname);
+  if (parent_inode>=0){
+    if(child_inode>=0){
+      if(remove_inode(type,parent_inode,child_inode)==0)
+      {
+        dprintf("Successful Removal of file \n ",pathname);
+        return 0;
+      }
+      else if (remove_inode(type, parent_inode,child_inode)==-2)
+      {
+        dprintf("...directory not empty");
+        return -2;
+      }
+      else if (remove_inode(type,parent_inode,child_inode)==-2)
+      {
+        dprintf("...type is wrong");
+        return -3;
+      }
+    }
+    if(child_inode < 1){ 
+        dprintf("...File does not exist");
+        osErrno = E_NO_SUCH_FILE;
+        return -1;
+    }
+    if (is_file_open(child_inode)==0)
+    {
+        dprintf("...File is already open");
+        osErrno = E_FILE_IN_USE;
+        return -1;       
+
+    }
+  
+  }
+
+  return -1;
+}*/
 
 int File_Open(char* file)
 {
