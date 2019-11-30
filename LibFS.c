@@ -897,7 +897,7 @@ int Dir_Size(char* path)
 int Dir_Read(char* path, void* buffer, int size)
 {
   /* YOUR CODE */
-  /*int child_inode;
+  int child_inode;
   follow_path(path,&child_inode,NULL);
 
   inode_t* directory = getInodeHelper(child_inode);
@@ -908,8 +908,8 @@ int Dir_Read(char* path, void* buffer, int size)
   
   char *buf =calloc(512,sizeof(char));
   for(int i=0;i<MAX_SECTORS_PER_FILE;i++){
-    Disk_Read(dir->data[i],buf);
-  }*/
+    //Disk_Read(dir->data[i],buf);
+  }
   return -1;
 }
 
