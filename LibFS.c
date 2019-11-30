@@ -174,7 +174,7 @@ static int bitmap_first_unused(int start, int num, int nbits)
   char *bitmap = calloc(512,sizeof(char));
   beginSector = 0; // we will iterate each sector using this variable
   
-  while(nbits > 0){// we will iterate as long we have a positivie nbits value
+  while(nbits > 0){// we will iterate as long as we have a positivie nbits value
     if(Disk_Read(start+beginSector, bitmap) == 0){
       for(beginByte = 0; beginByte < 512 ; beginByte++){// we will iterate each byte
           result = bitmap[beginByte];
@@ -187,7 +187,7 @@ static int bitmap_first_unused(int start, int num, int nbits)
             //temp = bitmap[beginByte] >> beginBit;
 	    //temp &= 1;
 	    //temp = (bitmap[beginByte] & (1 << beginBit));
-	    if((bitmap[beginByte] & (1 << (7-beginBit))) == 0){ // this particular bit is 0 (our desired one). Took help to check a particular bit from a byte from this website: https://stackoverflow.com/questions/4854207/get-a-specific-bit-from-byte
+	    if((bitmap[beginByte] & (1 << (7-beginBit))) == 0){ // this particular bit is 0 (our desired one). Took help to get a particular bit from a byte from this website: https://stackoverflow.com/questions/4854207/get-a-specific-bit-from-byte
 	      bitmap[beginByte] = bitmap[beginByte] | (1 << (7-beginBit)); // update the specific byte
 	      Disk_Write(start+beginSector, bitmap); // update the disk with modified byte
 	      return position;
@@ -212,21 +212,22 @@ static int bitmap_reset(int start, int num, int ibit)
   int beginSector, beginByte, beginBit;
   int Sector,byte,bit;
   char *bitmap = calloc(512,sizeof(char));
-  Sector = ibit / (512*8);
-  bit = ibit % (512*8);
+  Sector = ibit / (512*8);// we find out in which sector the ibit is located
+  bit = ibit % 8; // find out the ibit's position in that particular sector
+  beginByte = ibit / 512;// find out in which byte the ibit is located
   //ibit = ibit - (Sector*512*8) - (byte*8);
   dprintf("the sector and byte is %d and %d\n",Sector,byte);
   Disk_Read(start+Sector, bitmap);
-  for(int beginByte = 0; beginByte < 512; beginSector++){
-    for(int beginBit = 7; beginBit >=0; beginBit --){
+  //for(int beginByte = 0; beginByte < 512; beginSector++){
+    for(int beginBit = 0; beginBit < 8; beginBit++){
       if(bit == 0){
-        bitmap[beginByte] &= ~(1 << beginBit);
+        bitmap[beginByte] = bitmap[beginByte] & (~(1 << (7 - beginBit)));
 	Disk_Write(start+Sector, bitmap);
 	return 0;
       }
       bit --;
     }
-  }
+  //}
   return -1;
 }
 
