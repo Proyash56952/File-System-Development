@@ -772,7 +772,12 @@ int delete_file_or_dir(int type, char *pathname) {
       if (child_inode >= 0) {
       //int operation = remove_inode(type, parent_inode, child_inode);
       if (remove_inode(type, parent_inode, child_inode)==0) {
-      dprintf("... file/directory '%s' successfully Unlinked\n", pathname);
+      if(type){
+      dprintf("... directory '%s' successfully Unlinked\n", pathname);
+      }
+      else {
+        dprintf("... file '%s' successfully Unlinked\n", pathname);
+      }
       return 0;
       } 
       else {
