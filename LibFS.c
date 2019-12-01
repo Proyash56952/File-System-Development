@@ -743,52 +743,58 @@ int File_Create(char* file)
   return create_file_or_directory(0, file);
 }
 
+int delete_file_or_dir(int type, char *pathname) {
+    int child_inode;
+    char last_fname[MAX_NAME];
+    int parent_inode = follow_path(pathname, &child_inode, last_fname);
+
+    // if it is a file and is open
+    if (!type && is_file_open(child_inode)) {
+        dprintf("... file '%s' is currently open\n", last_fname);
+        osErrno = E_FILE_IN_USE;
+        return -1;
+    }
+
+    if (parent_inode >= 0) {
+        if (child_inode >= 0) {
+            int operation = remove_inode(type, parent_inode, child_inode);
+            if (!operation) {
+                dprintf("... file/directory '%s' successfully Unlinked\n", pathname);
+                // successful removal
+                return 0;
+            } else {
+                if (operation == -2) {
+                    dprintf("... directory '%s' is not empty.\n", pathname);
+                    osErrno = E_DIR_NOT_EMPTY;
+                } else if (operation == -3) {
+                    dprintf("... wrong type '%s'.\n", pathname);
+                    osErrno = E_GENERAL;
+                } else {
+                    dprintf("... file/directory '%s' unable to Unlink\n", pathname);
+                    osErrno = E_GENERAL;
+                }
+                return -1;
+            }
+        } else {
+            dprintf("... file/directory '%s' does not exists.\n", pathname);
+            if (type) { osErrno = E_NO_SUCH_DIR; }
+            else { osErrno = E_NO_SUCH_FILE; }
+            return -1;
+        }
+    } else {
+        dprintf("... error: something wrong with the file/path: '%s'\n", pathname);
+        osErrno = E_GENERAL;
+        return -1;
+    }
+}
+
 int File_Unlink(char* file)
 {
   /* YOUR CODE */
-  dprintf("...entering file unlink function");
+  dprintf(" ... entering file unlink function\n");
   dprintf("File_Unlink ('%s'):\n", file);
-  int type;
-  char* pathname;
-  int child_inode;
-  char last_fname[MAX_NAME]; // file namee size is 30 byte
-  int parent_inode=follow_path(pathname,&child_inode,last_fname);
-
-  dprintf("entering removal of file logic");
-  
-  if (parent_inode>=0){
-    if(child_inode>=0){
-      while (type==0){
-      if(remove_inode(type,parent_inode,child_inode)==0)
-      {
-        dprintf("Successful Removal of file \n ",pathname);
-        return 0;
-      }
-      else if (remove_inode(type, parent_inode,child_inode)==-2)
-      {
-        dprintf("...directory not empty");
-        return -2;
-      }
-      else if (remove_inode(type,parent_inode,child_inode)==-2)
-      {
-        dprintf("...type is wrong");
-        return -3;
-      }
-    }
-    }
-  }
-
-    if(child_inode<0){ 
-        dprintf("...File does not exist");
-        osErrno = E_NO_SUCH_FILE;
-        return -1;
-    }
-    if (!type && is_file_open(child_inode))
-    {
-        dprintf("...File is already open");
-        osErrno = E_FILE_IN_USE;
-        return -1;       
-    }
+  return delete_file_or_dir(0, file);
+  return -1;
   
   }
 
