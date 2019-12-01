@@ -501,14 +501,14 @@ int remove_inode(int type, int parent_inode, int child_inode)
        dprintf("...directory not empty");
        return -2; 
      }
-    dprintf("validating type and if directory empty");
+    dprintf("... validating type and if directory empty");
     //remove data from child inode
     for(int i=0;i < MAX_SECTORS_PER_FILE;i++){ //MAX_SECTORS_PER_FILE=30
     if (childnode->data[i])
     { 
       //buffer size is 512 bytes
       char buffer[SECTOR_SIZE];
-      dprintf("...deleting data of child node\n");
+      dprintf("... deleting data of child node\n");
       bitmap_reset(SECTOR_BITMAP_START_SECTOR, SECTOR_BITMAP_SECTORS, childnode->data[i]); //it resets the bit at the specific file table position
       //setting the value of buffer of size 512 bytes to zero
       /*for(int j=0;j<=SECTOR_SIZE;j++)
@@ -522,7 +522,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
     //remove child inode
     bitmap_reset(INODE_BITMAP_START_SECTOR,INODE_BITMAP_SECTORS, child_inode);
     memset(childnode,0,sizeof(inode_t));
-    dprintf("child inode is removed from i node table");
+    dprintf("... child inode is removed from i node table\n");
 
     /*update sector to disk
     childnode->type = type;
@@ -552,21 +552,22 @@ int remove_inode(int type, int parent_inode, int child_inode)
     // get the dirent sectors and find child dirent
     char dirent_buffer[SECTOR_SIZE];
     for (int j = 0; j < MAX_SECTORS_PER_FILE; j++) {
-        if (parent->data[j]) {
-            if (Disk_Read(parent->data[j], dirent_buffer) < 0) { return -1; }
-            dprintf("... load disk sector %d for dirent group %d\n", parent->data[j], j + 1);
+    if (parent->data[j]) {
+    if (Disk_Read(parent->data[j], dirent_buffer) < 0) { return -1; }
+    dprintf("... load disk sector %d for dirent group %d\n", parent->data[j], j + 1);
 
-            for (int k = 0; k < DIRENTS_PER_SECTOR; k++) {
-                dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t)));
-                // found child?, remove child dirent
-                if (dirent->inode == child_inode) {
-                    dprintf("... found match: dirent inode %d, child inode %d\n", dirent->inode, child_inode);
-                    memset(dirent, 0, sizeof(dirent_t));
-                    if (Disk_Write(parent->data[j], dirent_buffer) < 0) { return -1; }
-                    parent->size--;
-                    if (Disk_Write(sector, inode_buffer) < 0) return -1;
-                    dprintf("... update parent inode on disk sector %d\n", sector);
-                    return 0;
+    for (int k = 0; k < DIRENTS_PER_SECTOR; k++) {
+    dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t)));
+    // found child?, remove child dirent
+    if (dirent->inode == child_inode) {
+      dprintf("... found match: dirent inode %d, child inode %d\n", dirent->inode, child_inode);
+      memset(dirent, 0, sizeof(dirent_t));
+      if (Disk_Write(parent->data[j], dirent_buffer) < 0) { return -1; }
+      parent->size--;
+      if (Disk_Write(sector, inode_buffer) < 0) return -1;
+      dprintf("... update parent inode on disk sector %d\n", sector);
+      return 0;
+      dprintf("... exiting remove_inode function\n");
                 }
             }
         }
@@ -757,7 +758,7 @@ int delete_file_or_dir(int type, char *pathname) {
     //Check if file or directory exists or not
     if(child_inode<0)
     {
-      dprintf("... file or directory does not exist");
+      dprintf("... file or directory does not exist\n");
       if(type){
       osErrno = E_NO_SUCH_FILE;
       }
@@ -806,8 +807,8 @@ int File_Unlink(char* file)
 {
   /* YOUR CODE */
   dprintf(" ... entering file unlink function\n");
-  dprintf("File_Unlink ('%s') \n", file);
   return delete_file_or_dir(0, file);
+  dprintf("-- File_Unlink of ('%s') successful \n", file);
   return -1;
   
   }
@@ -916,7 +917,7 @@ int Dir_Unlink(char* path)
 {
   /* YOUR CODE */
   dprintf("... entering directory unlink function\n");
-  dprintf("Dir_Unlink ('%s'):\n", path);
+  dprintf("... Dir_Unlink ('%s'):\n", path);
   return delete_file_or_dir(1,path);
   return -1;
 }
