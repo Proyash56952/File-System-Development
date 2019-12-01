@@ -749,13 +749,13 @@ int delete_file_or_dir(int type, char *pathname) {
     int parent_inode = follow_path(pathname, &child_inode, last_fname);
 
     //first check if file is open 
-    if (is_file_open(child_inode)==0) {
+    if (is_file_open(child_inode)==1) {
         dprintf("... file '%s' is currently open\n", last_fname);
         osErrno = E_FILE_IN_USE;
         return -1;
     }
     //Check if file or directory exists or not
-    if(child_inode<1)
+    if(child_inode<0)
     {
       dprintf("... file or directory does not exist");
       if(type){
