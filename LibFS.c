@@ -511,10 +511,12 @@ int remove_inode(int type, int parent_inode, int child_inode)
       dprintf("...deleting data of child node\n");
       bitmap_reset(SECTOR_BITMAP_START_SECTOR, SECTOR_BITMAP_SECTORS, childnode->data[i]); //it resets the bit at the specific file table position
       //setting the value of buffer of size 512 bytes to zero
-      for(int j=0;j<=SECTOR_SIZE;j++)
+      /*for(int j=0;j<=SECTOR_SIZE;j++)
       {
         buffer[j]=0;
-      }
+      }*/
+      memset(buffer,0,SECTOR_SIZE);
+
     }
     }
     //remove child inode
@@ -522,11 +524,11 @@ int remove_inode(int type, int parent_inode, int child_inode)
     memset(childnode,0,sizeof(inode_t));
     dprintf("child inode is removed from i node table");
 
-    //update sector to disk
+    /*update sector to disk
     childnode->type = type;
     if(Disk_Write(sector,inode_buffer) < 0) return -1;
     dprintf("... update child inode %d (size=%d, type=%d), update disk sector %d\n",
-    child_inode, childnode->size, childnode->type, sector);
+    child_inode, childnode->size, childnode->type, sector);*/
 
     // get the disk sector containing the parent inode
     sector = INODE_TABLE_START_SECTOR+parent_inode/INODES_PER_SECTOR;
@@ -542,25 +544,32 @@ int remove_inode(int type, int parent_inode, int child_inode)
     dprintf("... get parent inode %d (size=%d, type=%d)\n",
     parent_inode, parent->size, parent->type);
 
-    // remove child from parent
-
-    for (int k;k<MAX_SECTORS_PER_FILE;k++ ) // MAX_SECTORS_PER_FILE=30
-    {
-    char dir[SECTOR_SIZE]; 
-    int parent_data=parent->data[k];
-    for (int l=0;k<DIRENTS_PER_SECTOR;l++ ) // DIRENTS_PER_SECTOR = 25
-    {
-     dirent_t *begin = (dirent_t *) (dir + (l * sizeof(dirent_t)));//size of dirent_t is 
-    if (begin->inode==child_inode)
-      {
-
-        memset(begin, 0, sizeof(dirent_t));
-        Disk_Write(parent_data, dir);
-        return 0;
-        dprintf("Child inode removed from parent successfully");
-      }
-
+    if (parent->type != 1) {
+        dprintf("... error: parent inode is not directory\n");
+        return -2; // parent not directory
     }
+
+    // get the dirent sectors and find child dirent
+    char dirent_buffer[SECTOR_SIZE];
+    for (int j = 0; j < MAX_SECTORS_PER_FILE; j++) {
+        if (parent->data[j]) {
+            if (Disk_Read(parent->data[j], dirent_buffer) < 0) { return -1; }
+            dprintf("... load disk sector %d for dirent group %d\n", parent->data[j], j + 1);
+
+            for (int k = 0; k < DIRENTS_PER_SECTOR; k++) {
+                dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t)));
+                // found child?, remove child dirent
+                if (dirent->inode == child_inode) {
+                    dprintf("... found match: dirent inode %d, child inode %d\n", dirent->inode, child_inode);
+                    memset(dirent, 0, sizeof(dirent_t));
+                    if (Disk_Write(parent->data[j], dirent_buffer) < 0) { return -1; }
+                    parent->size--;
+                    if (Disk_Write(sector, inode_buffer) < 0) return -1;
+                    dprintf("... update parent inode on disk sector %d\n", sector);
+                    return 0;
+                }
+            }
+        }
     }
   return -1;
 }
@@ -737,7 +746,8 @@ int File_Create(char* file)
 int File_Unlink(char* file)
 {
   /* YOUR CODE */
-  dprintf("...entering file unlink");
+  dprintf("...entering file unlink function");
+  dprintf("File_Unlink ('%s'):\n", file);
   int type;
   char* pathname;
   int child_inode;
@@ -770,7 +780,7 @@ int File_Unlink(char* file)
         osErrno = E_NO_SUCH_FILE;
         return -1;
     }
-    if (is_file_open(child_inode)==0)
+    if (is_file_open(child_inode))
     {
         dprintf("...File is already open");
         osErrno = E_FILE_IN_USE;
