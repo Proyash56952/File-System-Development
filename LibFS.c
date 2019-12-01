@@ -748,40 +748,54 @@ int delete_file_or_dir(int type, char *pathname) {
     char last_fname[MAX_NAME];
     int parent_inode = follow_path(pathname, &child_inode, last_fname);
 
-    // if it is a file and is open
-    if (!type && is_file_open(child_inode)) {
+    //first check if file is open 
+    if (is_file_open(child_inode)==0) {
         dprintf("... file '%s' is currently open\n", last_fname);
         osErrno = E_FILE_IN_USE;
         return -1;
     }
+    //Check if file or directory exists or not
+    if(child_inode<0)
+    {
+      dprintf(" ... file or directory does not exist");
+      if(type){
+      osErrno = E_NO_SUCH_FILE;
+      }
+      else {
+      osErrno = E_NO_SUCH_DIR;
+      }
+      return  -1;
+    }
 
     if (parent_inode >= 0) {
-        if (child_inode >= 0) {
-            int operation = remove_inode(type, parent_inode, child_inode);
-            if (!operation) {
-                dprintf("... file/directory '%s' successfully Unlinked\n", pathname);
-                // successful removal
-                return 0;
-            } else {
-                if (operation == -2) {
-                    dprintf("... directory '%s' is not empty.\n", pathname);
-                    osErrno = E_DIR_NOT_EMPTY;
-                } else if (operation == -3) {
-                    dprintf("... wrong type '%s'.\n", pathname);
-                    osErrno = E_GENERAL;
-                } else {
-                    dprintf("... file/directory '%s' unable to Unlink\n", pathname);
-                    osErrno = E_GENERAL;
-                }
-                return -1;
-            }
-        } else {
-            dprintf("... file/directory '%s' does not exists.\n", pathname);
-            if (type) { osErrno = E_NO_SUCH_DIR; }
-            else { osErrno = E_NO_SUCH_FILE; }
-            return -1;
+      if (child_inode >= 0) {
+      //int operation = remove_inode(type, parent_inode, child_inode);
+      if (remove_inode(type, parent_inode, child_inode)) {
+      dprintf("... file/directory '%s' successfully Unlinked\n", pathname);
+      return 0;
+      } 
+      else {
+      if (remove_inode(type, parent_inode, child_inode) == -2) {
+      dprintf("... directory '%s' is not empty.\n", pathname);
+      osErrno = E_DIR_NOT_EMPTY;
+      } 
+      else if (remove_inode(type, parent_inode, child_inode) == -3) {
+      dprintf("... wrong type '%s'.\n", pathname);
+      osErrno = E_GENERAL;
+      }
+      else {
+      dprintf("... file/directory '%s' unable to Unlink\n", pathname);
+      osErrno = E_GENERAL;
+      }
+      return -1;
+       }
+      } else {
+      dprintf("... file/directory '%s' does not exists.\n", pathname);
+        if (type) { osErrno = E_NO_SUCH_DIR; }
+        else { osErrno = E_NO_SUCH_FILE; }
+        return -1;
         }
-    } else {
+        } else {
         dprintf("... error: something wrong with the file/path: '%s'\n", pathname);
         osErrno = E_GENERAL;
         return -1;
@@ -901,6 +915,9 @@ int Dir_Create(char* path)
 int Dir_Unlink(char* path)
 {
   /* YOUR CODE */
+  dprintf(" ... entering file unlink function\n");
+  dprintf("File_Unlink ('%s'):\n", path);
+  return delete_file_or_dir(1,path);
   return -1;
 }
 
