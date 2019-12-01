@@ -758,6 +758,7 @@ int File_Unlink(char* file)
   
   if (parent_inode>=0){
     if(child_inode>=0){
+      while (type==0){
       if(remove_inode(type,parent_inode,child_inode)==0)
       {
         dprintf("Successful Removal of file \n ",pathname);
@@ -774,8 +775,10 @@ int File_Unlink(char* file)
         return -3;
       }
     }
+    }
+  }
 
-    if(type){ 
+    if(child_inode<0){ 
         dprintf("...File does not exist");
         osErrno = E_NO_SUCH_FILE;
         return -1;
