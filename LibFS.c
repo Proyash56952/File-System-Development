@@ -791,9 +791,9 @@ int File_Unlink(char* file)
         dprintf("... error: something wrong with the file/path: '%s'\n", pathname);
         osErrno = E_GENERAL;
         return -1;
-
-  return -1;
+    }
 }
+
 
 int File_Open(char* file)
 {
