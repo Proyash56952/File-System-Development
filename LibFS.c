@@ -480,6 +480,7 @@ int create_file_or_directory(int type, char* pathname)
 // -1 if general error, -2 if directory not empty, -3 if wrong type
 int remove_inode(int type, int parent_inode, int child_inode)
 {
+  dprintf("entering remove inode function");
   /* YOUR CODE */
   //get child i_node
     inode_t* childnode = getInodeHelper(child_inode);
@@ -493,16 +494,16 @@ int remove_inode(int type, int parent_inode, int child_inode)
       dprintf("...filetype not valid\n");
       return -3;
     } 
-
+  
     // check for empty directory
     else if (childnode->size!=0)
      { 
        dprintf("...directory not empty");
        return -2; 
      }
-
+    dprintf("validating type and if directory empty");
     //remove data from child inode
-    for(int i=0;i < MAX_SECTORS_PER_FILE;i++) //MAX_SECTORS_PER_FILE=30
+    for(int i=0;i < MAX_SECTORS_PER_FILE;i++){ //MAX_SECTORS_PER_FILE=30
     if (childnode->data[i])
     { 
       //buffer size is 512 bytes
@@ -514,6 +515,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
       {
         buffer[j]=0;
       }
+    }
     }
     //remove child inode
     bitmap_reset(INODE_BITMAP_START_SECTOR,INODE_BITMAP_SECTORS, child_inode);
@@ -735,11 +737,15 @@ int File_Create(char* file)
 int File_Unlink(char* file)
 {
   /* YOUR CODE */
-   int type;
+  dprintf("...entering file unlink");
+  int type;
   char* pathname;
   int child_inode;
   char last_fname[MAX_NAME]; // file namee size is 30 byte
   int parent_inode=follow_path(pathname,&child_inode,last_fname);
+
+  dprintf("entering removal of file logic");
+  
   if (parent_inode>=0){
     if(child_inode>=0){
       if(remove_inode(type,parent_inode,child_inode)==0)
@@ -758,6 +764,7 @@ int File_Unlink(char* file)
         return -3;
       }
     }
+
     if(child_inode < 1){ 
         dprintf("...File does not exist");
         osErrno = E_NO_SUCH_FILE;
