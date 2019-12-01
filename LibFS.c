@@ -788,13 +788,9 @@ int File_Unlink(char* file)
         dprintf("...File is already open");
         osErrno = E_FILE_IN_USE;
         return -1;       
-
     }
   
   }
-
-  return -1;
-}
 
 int File_Open(char* file)
 {
