@@ -755,9 +755,9 @@ int delete_file_or_dir(int type, char *pathname) {
         return -1;
     }
     //Check if file or directory exists or not
-    if(child_inode<0)
+    if(child_inode<1)
     {
-      dprintf(" ... file or directory does not exist");
+      dprintf("... file or directory does not exist");
       if(type){
       osErrno = E_NO_SUCH_FILE;
       }
@@ -806,7 +806,7 @@ int File_Unlink(char* file)
 {
   /* YOUR CODE */
   dprintf(" ... entering file unlink function\n");
-  dprintf("File_Unlink ('%s'):\n", file);
+  dprintf("File_Unlink ('%s') \n", file);
   return delete_file_or_dir(0, file);
   return -1;
   
@@ -915,8 +915,8 @@ int Dir_Create(char* path)
 int Dir_Unlink(char* path)
 {
   /* YOUR CODE */
-  dprintf(" ... entering file unlink function\n");
-  dprintf("File_Unlink ('%s'):\n", path);
+  dprintf("... entering directory unlink function\n");
+  dprintf("Dir_Unlink ('%s'):\n", path);
   return delete_file_or_dir(1,path);
   return -1;
 }
