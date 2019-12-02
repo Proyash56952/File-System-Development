@@ -480,7 +480,7 @@ int create_file_or_directory(int type, char* pathname)
 // -1 if general error, -2 if directory not empty, -3 if wrong type
 int remove_inode(int type, int parent_inode, int child_inode)
 {
-  dprintf("... entering remove inode function\n");
+  dprintf("entering remove inode function\n");
   /* YOUR CODE */
   //get child i_node
     inode_t* childnode = getInodeHelper(child_inode);
@@ -777,7 +777,7 @@ int delete_helper(int type, char *pathname) {
     //Check if file or directory exists or not
     if(child_inode<0) //if childnode is less than zero it means it doesnt exist on the list
     {
-      dprintf(" ... file or directory does not exist\n");
+      dprintf(" ...  or directory does not exist\n");
       if(type){
       osErrno = E_NO_SUCH_FILE;
       }
@@ -791,36 +791,37 @@ int delete_helper(int type, char *pathname) {
       if (child_inode >= 0) {
       if (remove_inode(type, parent_inode, child_inode)==0) {
       // inode remove is successful when the above function returns 0
-      if(type){ //for type =1 directory is unlinked
+      if(type){
       dprintf("... directory '%s' successfully Unlinked\n", pathname);
       }
-      else { // otherwisee for type = 0 file is unlinked
+      else {
         dprintf("... file '%s' successfully Unlinked\n", pathname);
       }
       return 0;
       } 
       else {
       if (remove_inode(type, parent_inode, child_inode) == -2) {
-      /* when the above function return -2 it means dirctory not empty 
-      and inode cant be removed */
       dprintf("... directory '%s' is not empty.\n", pathname);
       osErrno = E_DIR_NOT_EMPTY;
       } 
       else if (remove_inode(type, parent_inode, child_inode) == -3) {
-      /* when the above function return -3 it means wrong type */
-      dprintf("... wrong type '%s'.\n", pathname);
+      dprintf("... ^^ wrong type '%s'.\n", pathname);
       osErrno = E_GENERAL;
       }
       else {
-      //
-      dprintf("... file/directory '%s' unable to Unlink\n", pathname);
+      dprintf("... ^^ file/directory '%s' unable to Unlink\n", pathname);
       osErrno = E_GENERAL;
       }
       return -1;
-      }
-      } 
+       }
+      } else {
+      dprintf("... ^^ file/directory '%s' does not exists.\n", pathname);
+        if (type) { osErrno = E_NO_SUCH_DIR; }
+        else { osErrno = E_NO_SUCH_FILE; }
+        return -1;
+        }
         } else {
-        dprintf("... error: something wrong with the file/path: '%s'\n", pathname);
+        dprintf("... ^^ error: something wrong with the file/path: '%s'\n", pathname);
         osErrno = E_GENERAL;
         return -1;
     }
