@@ -522,6 +522,10 @@ int remove_inode(int type, int parent_inode, int child_inode)
     }
     //remove child inode
     bitmap_reset(INODE_BITMAP_START_SECTOR,INODE_BITMAP_SECTORS, child_inode);
+    /* bitmap_reset is called to perforrm the main function of removing i node 
+    by resetting the bit and putting a pointer to know location. Here 
+    star pointer is at inode bitmap star sector to the size of the bitmap sector 
+    and here the child inode bit is flipped */
     memset(childnode,0,sizeof(inode_t));
     /* the memory buffer of childnode in size of the inode 
       is set to zero to clear the inode table */
@@ -574,7 +578,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
       if (Disk_Write(parent->data[j], dirent_buffer) < 0) { 
         return -1; //updating disk about parent inode data
         }
-      parent->size--; 
+      parent->size--; // resetting the parent inode to previous i node 
       /* directory inode restored to previous node */
       if (Disk_Write(sector, inode_buffer) < 0) {
          return -1; //update disk with new inode position
@@ -764,12 +768,13 @@ int File_Create(char* file)
 
 int delete_helper(int type, char *pathname) {
     int child_inode;
-    char last_fname[MAX_NAME];//
+    char last_fname[MAX_NAME];// MAX_NAME = 16 bytes
     int parent_inode = follow_path(pathname, &child_inode, last_fname);
 
     //first check if file is open 
     if (is_file_open(child_inode)==1) {
-        //when file is open the above function returns 1
+        /* when file is open the above function 
+        returns 1 and remove inode will not be called */
         dprintf("... file '%s' is currently open\n", last_fname);
         osErrno = E_FILE_IN_USE;
         return -1;
