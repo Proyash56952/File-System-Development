@@ -582,7 +582,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
       dprintf("... update parent inode on disk sector %d\n", sector);
       return 0; 
       /* this confirms inode has been remove for the 
-      function delete_helper for 
+      function delete_file_or_directory for 
       File_Unlink & Dir_Unlink*/
 
       dprintf("... exiting remove_inode function\n");
@@ -809,17 +809,14 @@ int delete_helper(int type, char *pathname) {
       dprintf("... wrong type '%s'.\n", pathname);
       osErrno = E_GENERAL;
       }
-      else if(pathname == "/") { 
-      dprintf("... file/directory '%s' is root directory\n", pathname);
-      osErrno = E_ROOT_DIR;
-      }
-      else {
-      dprintf("... file/directory '%s' could not be unlinked for general error\n");
+      else { 
+      dprintf("... file/directory '%s' unable to Unlink\n", pathname);
       osErrno = E_GENERAL;
       }
       return -1;
+       }
       } 
-      } 
+        } 
 }
 
 int File_Unlink(char* file)
