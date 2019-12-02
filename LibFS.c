@@ -816,7 +816,8 @@ int delete_helper(int type, char *pathname) {
       return -1;
        }
       } 
-        } 
+      } 
+    
 }
 
 int File_Unlink(char* file)
@@ -934,6 +935,12 @@ int Dir_Unlink(char* path)
 {
   /* YOUR CODE */
   dprintf("... entering directory unlink function\n");
+  if (path == "/")
+	{
+    dprintf("directory %s is a root directory",path);
+		osErrno = E_ROOT_DIR;
+		return -1;
+	}
   dprintf("... Dir_Unlink ('%s'):\n", path);
   //call delete_helper() to remove directory inode
   return delete_helper(1,path);// type 1 for directory 
