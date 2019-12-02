@@ -803,24 +803,26 @@ int delete_helper(int type, char *pathname) {
       else {
       if (remove_inode(type, parent_inode, child_inode) == -2) {
       dprintf("... directory '%s' is not empty.\n", pathname);
+      if (Dir_Size(pathname) != 0){
       osErrno = E_DIR_NOT_EMPTY;
+      }
       } 
       else if (remove_inode(type, parent_inode, child_inode) == -3) {
       dprintf("... wrong type '%s'.\n", pathname);
       osErrno = E_GENERAL;
       }
+      else if(pathname == "/") { 
+      dprintf("... file/directory '%s' is root directory\n", pathname);
+      osErrno = E_ROOT_DIR;
+      }
       else {
-      dprintf("... file/directory '%s' unable to Unlink\n", pathname);
+      dprintf("... file/directory '%s' could not be unlinked for general error\n");
       osErrno = E_GENERAL;
+      
       }
       return -1;
-       }
       } 
-        } else {
-        dprintf("... something went wrong with the file/path: '%s'\n", pathname);
-        osErrno = E_GENERAL;
-        return -1;
-    }
+      } 
 }
 
 int File_Unlink(char* file)
