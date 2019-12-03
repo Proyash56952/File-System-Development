@@ -565,10 +565,8 @@ int remove_inode(int type, int parent_inode, int child_inode)
     for (int j = 0; j < MAX_SECTORS_PER_FILE; j++) { // MAX_SECTORS_PER_FILE=30
     if (parent->data[j]) {
       if (Disk_Read(parent->data[j], dirent_buffer) < 0) { 
-        return -1;
+        return -1; // if disk cannot be read for memory data
        }
-      dprintf("... load disk sector %d for dirent group %d\n", parent->data[j], j + 1);
-    
     //consider directory over several sectors assigned for directory
     for (int k = 0; k < DIRENTS_PER_SECTOR; k++) { // DIRENTS_PER_SECTOR = 32
     dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t))); //get data from sector
@@ -805,7 +803,7 @@ int delete_helper(int type, char *pathname) {
       else {
         dprintf("... file '%s' successfully Unlinked\n", pathname);
       }
-      dprintf("DONE UNLINKING");
+      dprintf("DONE UNLINKING\n");
       return 0;
       } 
 
