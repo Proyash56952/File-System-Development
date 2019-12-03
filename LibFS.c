@@ -582,13 +582,6 @@ int remove_inode(int type, int parent_inode, int child_inode)
     for (int k = 0; k < DIRENTS_PER_SECTOR; k++) { 
     dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t))); //
     
-    if(parent->size > 0){
-      parent->size--; // resetting the parent inode to previous i node 
-      }
-      /* directory inode restored to previous node */
-      if (Disk_Write(sector, inode_buffer) < 0) {
-         return -1; //update disk with new inode position
-      }
     /* The following process is for directory unlink*/
 
     // remove child dirent 
@@ -598,12 +591,18 @@ int remove_inode(int type, int parent_inode, int child_inode)
       if (Disk_Write(parent->data[j], dirent_buffer) < 0) { 
         return -1; //updating disk about parent inode data
         }
-      
+      if(parent->size > 0){
+      parent->size--; // resetting the parent inode to previous i node 
+      }
+      /* directory inode restored to previous node */
+      if (Disk_Write(sector, inode_buffer) < 0) {
+         return -1; //update disk with new inode position
+      }
       dprintf("... update parent inode on disk sector %d\n", sector);
       return 0; 
-      /* this confirms inode has been removed for the 
-      function delete_helper() for 
-      File_Unlink & Dir_Unlink */
+      /* this confirms inode has been remove for the 
+      function delete_helper for 
+      File_Unlink & Dir_Unlink*/
 
       dprintf("... exiting remove_inode function\n");
                 }
