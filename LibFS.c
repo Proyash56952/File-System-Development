@@ -567,6 +567,15 @@ int remove_inode(int type, int parent_inode, int child_inode)
       if (Disk_Read(parent->data[j], dirent_buffer) < 0) { 
         return -1; // if disk cannot be read for memory data
        }
+       
+    if(parent->size>0){ //if parent not empty
+      parent->size--; // resetting the parent inode to previous i node 
+      }
+      /* directory inode restored to previous node */
+      if (Disk_Write(sector, inode_buffer) < 0) {
+        dprintf("... update parent inode on disk sector %d\n", sector);
+        return -1; //update disk with new inode position
+      }
     //consider directory over several sectors assigned for directory
     for (int k = 0; k < DIRENTS_PER_SECTOR; k++) { // DIRENTS_PER_SECTOR = 32
     dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t))); //get data from sector
@@ -576,18 +585,11 @@ int remove_inode(int type, int parent_inode, int child_inode)
       if (Disk_Write(parent->data[j], dirent_buffer) < 0) { 
         return -1; //updating disk about parent inode data
         }
-      if(parent->size>0){ //if parent not empty
-      parent->size--; // resetting the parent inode to previous i node 
-      }
-      /* directory inode restored to previous node */
-      if (Disk_Write(sector, inode_buffer) < 0) {
-        dprintf("... update parent inode on disk sector %d\n", sector);
-        return -1; //update disk with new inode position
-      }
+      
       
       return 0; 
       /* this confirms inode has been remove for the 
-      function delete_file_or_directory for 
+      function delete_helper for 
       File_Unlink & Dir_Unlink*/
 
       dprintf("... exiting remove_inode function\n");
