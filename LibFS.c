@@ -567,7 +567,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
       if (Disk_Read(parent->data[j], dirent_buffer) < 0) { 
         return -1; // if disk cannot be read for memory data
        }
-       
+
     if(parent->size>0){ //if parent not empty
       parent->size--; // resetting the parent inode to previous i node 
       }
@@ -834,12 +834,12 @@ int File_Unlink(char* file)
   /* YOUR CODE */
   dprintf(" ... entering file unlink function\n");
   dprintf("... File_Unlink ('%s'):\n", file);
-  //call delete_helper() to remove directory inod
+  //call delete_helper() to remove file inode
   return delete_helper(0, file);//type 0 for file
   return -1;
   
   }
-
+ 
 int File_Open(char* file)
 {
   dprintf("File_Open('%s'):\n", file);
