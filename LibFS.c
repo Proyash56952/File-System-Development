@@ -582,6 +582,13 @@ int remove_inode(int type, int parent_inode, int child_inode)
     for (int k = 0; k < DIRENTS_PER_SECTOR; k++) { 
     dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t))); //
     
+    if(parent->size > 0){
+      parent->size--; // resetting the parent inode to previous i node 
+      }
+      /* directory inode restored to previous node */
+      if (Disk_Write(sector, inode_buffer) < 0) {
+         return -1; //update disk with new inode position
+      }
     /* The following process is for directory unlink*/
 
     // remove child dirent 
@@ -591,16 +598,12 @@ int remove_inode(int type, int parent_inode, int child_inode)
       if (Disk_Write(parent->data[j], dirent_buffer) < 0) { 
         return -1; //updating disk about parent inode data
         }
-      parent->size--; // resetting the parent inode to previous i node 
-      /* directory inode restored to previous node */
-      if (Disk_Write(sector, inode_buffer) < 0) {
-         return -1; //update disk with new inode position
-      }
+      
       dprintf("... update parent inode on disk sector %d\n", sector);
       return 0; 
-      /* this confirms inode has been remove for the 
-      function delete_file_or_directory for 
-      File_Unlink & Dir_Unlink*/
+      /* this confirms inode has been removed for the 
+      function delete_helper() for 
+      File_Unlink & Dir_Unlink */
 
       dprintf("... exiting remove_inode function\n");
                 }
@@ -1154,7 +1157,8 @@ dprintf("... entering directory unlink function\n");
 int Dir_Size(char* path){
   /* YOUR CODE */
   int child_inode;
-  follow_path(path, &child_inode, NULL); // usign this function we find out the child inode associated with the path
+  follow_path(path, &child_inode, NULL); // usign this function we find out 
+                                        //the child inode associated with the path
   if(child_inode >= 0) { 
     inode_t* directory = getInodeHelper(child_inode); // load the inode from the given inode no
     return directory->size * sizeof(dirent_t);
@@ -1195,10 +1199,11 @@ int Dir_Read(char* path, void* buffer, int size)
 	    return -1;
   }
   //dprintf("size ok\n");
-  char *buf =calloc(512,sizeof(char));
+  char *buf =calloc(512,sizeof(char));//allocating buffer memory initially to zero
   int i = 0;
   int count = 0;
-  char *temp = calloc(512,sizeof(char));
+  char *temp = calloc(512,sizeof(char));//allocating the buffer to zero later to 
+                                        // fill this memory with directory data[] content 
   if(directory->data[0]){
    dprintf("got something\n");
   }
@@ -1212,40 +1217,5 @@ int Dir_Read(char* path, void* buffer, int size)
   return -1;
 }
 
-int remove_file_or_directory(int type, char* pathname){
-	int child_inode, status;
-	char last_fname[MAX_NAME];
-	int parent_inode = follow_path(pathname, &child_inode, last_fname);
 
-	if(parent_inode >= 0) {
-		if(child_inode < 0) {
-			dprintf("... file/directory '%s' does not exist, failed to create\n", pathname);
-			if(!type) osErrno = E_NO_SUCH_FILE;
-			else osErrno = E_NO_SUCH_DIR;
-			return -1;
-		}
-		else {
-			if(!type && is_file_open(child_inode)){
-				osErrno = E_FILE_IN_USE;
-				return -1;
-			}
-			else if((status = remove_inode(type, parent_inode, child_inode)) >= 0) {
-				dprintf("... successfully removed file/directory: '%s'\n", pathname);
-				return 0;
-			}
-			else if (status == -2){
-				osErrno = E_DIR_NOT_EMPTY;
-				return -1;
-			}
-			else {
-				dprintf("... error: something wrong with removing child inode\n");
-				return -1;
-			}
-		}
-	}
-	else {
-		dprintf("... error: something wrong with the file/path: '%s'\n", pathname);
-		osErrno = E_NO_SUCH_FILE;
-		return -1;
-	}
-}
+		
