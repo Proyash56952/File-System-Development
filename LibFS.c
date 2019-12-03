@@ -485,24 +485,26 @@ int remove_inode(int type, int parent_inode, int child_inode)
   //get child i_node
     inode_t* childnode = getInodeHelper(child_inode);
   
-  //
+  //initializing the sector and inode_buffer for later use
   int sector = INODE_TABLE_START_SECTOR + child_inode / INODES_PER_SECTOR;
   char inode_buffer[SECTOR_SIZE];
+
     //check type validity
-    if (childnode->type != type) 
-    {
+    if (childnode->type != type) // if the current type is not equivalent to
+    {                            // intilized type it is not valid
       dprintf("...filetype not valid\n");
       return -3;
     } 
   
     // check for empty directory
-    else if (childnode->size!=0)
-     { 
+    else if (childnode->size!=0) //if directory size not equals 0 it means
+     {                           // directory is not empty
        dprintf("...directory not empty\n");
        return -2; 
      }
-    dprintf("... validating type and if directory empty\n");
-    /* considering the child inode is distribute */
+    dprintf("... after validating type and if directory empty\n");
+
+    /* considering the child inode is distributed among sectors */
     //remove data from child inode by 
     for(int i=0;i < MAX_SECTORS_PER_FILE;i++){ //MAX_SECTORS_PER_FILE=30
     if (childnode->data[i]) 
@@ -510,9 +512,11 @@ int remove_inode(int type, int parent_inode, int child_inode)
       //buffer size is 512 bytes
       char buffer[SECTOR_SIZE];
       dprintf("... deleting data of child node\n");
-      bitmap_reset(SECTOR_BITMAP_START_SECTOR, SECTOR_BITMAP_SECTORS, childnode->data[i]); //it resets the bit at the specific file table position
-      //setting the value of buffer of size 512 bytes to zero
-      memset(buffer,0,SECTOR_SIZE);
+      bitmap_reset(SECTOR_BITMAP_START_SECTOR, SECTOR_BITMAP_SECTORS, childnode->data[i]); 
+      //it resets the sector of the data block and resets the bit to 0 if it was 1
+
+      memset(buffer,0,SECTOR_SIZE);//setting the value of buffer of size 512 bytes to zero
+
       /*the memory buffer of inode data with the sector size of 512 
       is set to zero using memset() function because it has a nuilt in loop
       that will set the buffer size to 0 with faster run time intead of using 
@@ -523,12 +527,12 @@ int remove_inode(int type, int parent_inode, int child_inode)
     //remove child inode
     bitmap_reset(INODE_BITMAP_START_SECTOR,INODE_BITMAP_SECTORS, child_inode);
     /* bitmap_reset is called to perforrm the main function of removing i node 
-    by resetting the bit and putting a pointer to know location. Here 
-    star pointer is at inode bitmap star sector to the size of the bitmap sector 
-    and here the child inode bit is flipped */
+    by resetting the bit. Here start pointer is at inode bitmap start sector to the size of the inode bitmap 
+    sector and here the child inode bit is flipped to zero */
     memset(childnode,0,sizeof(inode_t));
     /* the memory buffer of childnode in size of the inode 
-      is set to zero to clear the inode table */
+      is set to zero to clear the inode table 
+      that had the file/direcotry type, size and sectors */
     dprintf("... child inode is removed from i node table\n");
 
     /* The following four process of fetching parent inode
@@ -558,7 +562,7 @@ int remove_inode(int type, int parent_inode, int child_inode)
 
     // get the dirent sectors 
     char dirent_buffer[SECTOR_SIZE];
-    for (int j = 0; j < MAX_SECTORS_PER_FILE; j++) {
+    for (int j = 0; j < MAX_SECTORS_PER_FILE; j++) { // MAX_SECTORS_PER_FILE=30
     if (parent->data[j]) {
       if (Disk_Read(parent->data[j], dirent_buffer) < 0) { 
         return -1;
@@ -566,24 +570,23 @@ int remove_inode(int type, int parent_inode, int child_inode)
       dprintf("... load disk sector %d for dirent group %d\n", parent->data[j], j + 1);
     
     //consider directory over several sectors assigned for directory
-    for (int k = 0; k < DIRENTS_PER_SECTOR; k++) { 
-    dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t))); //
-    
+    for (int k = 0; k < DIRENTS_PER_SECTOR; k++) { // DIRENTS_PER_SECTOR = 32
+    dirent_t *dirent = (dirent_t *) (dirent_buffer + (k * sizeof(dirent_t))); //get data from sector
     /* The following process is for directory unlink*/
-
-    // remove child dirent 
     if (dirent->inode == child_inode) { // if child directory is found
-      dprintf("... found match: dirent inode %d, child inode %d\n", dirent->inode, child_inode);
       memset(dirent, 0, sizeof(dirent_t));//clearing the buffer of directory by setting to zero
       if (Disk_Write(parent->data[j], dirent_buffer) < 0) { 
         return -1; //updating disk about parent inode data
         }
+      if(parent->size>0){ //if parent not empty
       parent->size--; // resetting the parent inode to previous i node 
+      }
       /* directory inode restored to previous node */
       if (Disk_Write(sector, inode_buffer) < 0) {
-         return -1; //update disk with new inode position
+        dprintf("... update parent inode on disk sector %d\n", sector);
+        return -1; //update disk with new inode position
       }
-      dprintf("... update parent inode on disk sector %d\n", sector);
+      
       return 0; 
       /* this confirms inode has been remove for the 
       function delete_file_or_directory for 
@@ -802,9 +805,10 @@ int delete_helper(int type, char *pathname) {
       else {
         dprintf("... file '%s' successfully Unlinked\n", pathname);
       }
-      return 0;
       dprintf("DONE UNLINKING");
+      return 0;
       } 
+
       else {
       if (remove_inode(type, parent_inode, child_inode) == -2) {
       dprintf("... directory '%s' is not empty.\n", pathname);
@@ -941,7 +945,7 @@ int Dir_Unlink(char* path)
   /* YOUR CODE */
   dprintf("... entering directory unlink function\n");
   if (path == "/")
-	{
+	{ //root directory should not be removed
     dprintf("directory %s is a root directory",path);
 		osErrno = E_ROOT_DIR;
 		return -1;
