@@ -803,7 +803,7 @@ int delete_helper(int type, char *pathname) {
       else {
         dprintf("... file '%s' successfully Unlinked\n", pathname);
       }
-      dprintf("DONE UNLINKING\n");
+      dprintf("DONE UNLINKING \n");
       return 0;
       } 
 
